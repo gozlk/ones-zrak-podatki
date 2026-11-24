@@ -1,0 +1,12 @@
+# Linting and formatting for the scraper, run locally:
+#   uvx ruff check .github/scripts
+#   uvx ruff format .github/scripts
+#
+# E/F pycodestyle and pyflakes, I import order, UP modern syntax, B bugbear,
+# SIM simplification. E501 is enforced at line-length 100: it is the one rule
+# that catches a string or comment the formatter cannot split itself.
+target-version = "py312"
+line-length = 100
+
+[lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]

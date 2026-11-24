@@ -1,0 +1,52 @@
+name: scrape
+
+# Four attempts per hour, deliberately away from :00 — GitHub warns that
+# "high load times include the start of every hour" and that queued jobs may
+# be dropped. The feed keeps 7 days, so a missed run only delays data.
+on:
+  schedule:
+    - cron: "5,20,35,50 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# Never let two runs race on the same files.
+concurrency:
+  group: scrape
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Scrape ARSO
+        id: scrape
+        run: python3 .github/scripts/scrape.py
+
+      # Runs even when the scrape step failed, so a partial result is still
+      # kept. The job stays red either way.
+      - name: Commit
+        if: always()
+        run: |
+          set -euo pipefail
+          git config user.name "Automated"
+          git config user.email "actions@users.noreply.github.com"
+
+          # An empty message means the scraper changed nothing.
+          msg="$RUNNER_TEMP/commit-msg.txt"
+          if [ ! -s "$msg" ]; then
+            echo "empty commit message — nothing changed"
+            exit 0
+          fi
+
+          git add -A -- data 2>/dev/null || true
+          git commit -F "$msg"
+          git push
